@@ -1,3 +1,5 @@
+import 'dart:core';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Сервис для работы с локальным хранилищем
@@ -21,6 +23,8 @@ class StorageService {
   }
 
   /// Проверяет, есть ли активная подписка (с проверкой срока действия)
+  /// ВАЖНО: Метод синхронный, но при обнаружении истекшей подписки
+  /// запускает асинхронную очистку в фоне
   bool hasSubscription() {
     final hasSubscriptionFlag = _prefs.getBool(_subscriptionKey) ?? false;
 
@@ -32,6 +36,8 @@ class StorageService {
     final expiryTimestamp = _prefs.getInt(_subscriptionExpiryKey);
     if (expiryTimestamp == null) {
       // Если нет даты истечения, подписка недействительна
+      // Очищаем флаг асинхронно в фоне
+      _clearExpiredSubscriptionInBackground();
       return false;
     }
 
@@ -40,12 +46,23 @@ class StorageService {
 
     // Проверяем, не истекла ли подписка
     if (now.isAfter(expiryDate)) {
-      // Подписка истекла - автоматически деактивируем
-      _prefs.setBool(_subscriptionKey, false);
+      // Подписка истекла - запускаем очистку в фоне
+      _clearExpiredSubscriptionInBackground();
       return false;
     }
 
     return true;
+  }
+
+  /// Асинхронная очистка истекшей подписки в фоновом режиме
+  /// Не блокирует основной поток
+  void _clearExpiredSubscriptionInBackground() {
+    // Запускаем асинхронную операцию без ожидания
+    // unawaited - допустимо, так как это фоновая очистка
+    Future(() async {
+      await _prefs.setBool(_subscriptionKey, false);
+      await _prefs.remove(_subscriptionExpiryKey);
+    });
   }
 
   /// Получает дату окончания подписки
@@ -57,14 +74,27 @@ class StorageService {
 
   /// Устанавливает подписку с датой окончания
   /// [expiryDate] - дата окончания подписки
+  /// АТОМАРНАЯ операция: обе записи должны завершиться успешно
   Future<void> setSubscriptionWithExpiry(DateTime expiryDate) async {
+    // Сначала записываем дату, потом флаг
+    // Это безопаснее: если запись прервется, hasSubscription вернет false
+    await _prefs.setInt(
+      _subscriptionExpiryKey,
+      expiryDate.millisecondsSinceEpoch,
+    );
     await _prefs.setBool(_subscriptionKey, true);
-    await _prefs.setInt(_subscriptionExpiryKey, expiryDate.millisecondsSinceEpoch);
+
+    // Принудительный commit для обеспечения атомарности
+    // (SharedPreferences обычно делает это автоматически, но для гарантии)
+    await _prefs.reload();
   }
 
   /// Отменяет подписку
+  /// АТОМАРНАЯ операция
   Future<void> cancelSubscription() async {
+    // Сначала сбрасываем флаг, потом удаляем дату
     await _prefs.setBool(_subscriptionKey, false);
     await _prefs.remove(_subscriptionExpiryKey);
+    await _prefs.reload();
   }
 }

@@ -24,30 +24,50 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
       ((monthlyPrice * 12 - yearlyPrice) / (monthlyPrice * 12)) * 100;
 
   Future<void> _handlePurchase() async {
+    // Защита от множественных одновременных вызовов
+    if (_isPurchasing) {
+      return; // Уже идет покупка, игнорируем повторное нажатие
+    }
+
     setState(() {
       _isPurchasing = true;
     });
 
-    // Эмуляция процесса покупки (задержка 2 секунды)
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // Эмуляция процесса покупки (задержка 2 секунды)
+      await Future.delayed(const Duration(seconds: 2));
 
-    // Определяем тип подписки в зависимости от выбранного плана
-    final subscriptionType = _selectedPlan == SubscriptionPlan.monthly
-        ? SubscriptionType.monthly
-        : SubscriptionType.yearly;
+      // Определяем тип подписки в зависимости от выбранного плана
+      final subscriptionType = _selectedPlan == SubscriptionPlan.monthly
+          ? SubscriptionType.monthly
+          : SubscriptionType.yearly;
 
-    // Вызываем метод покупки подписки с указанием типа
-    await ref
-        .read(subscriptionStatusProvider.notifier)
-        .purchaseSubscription(subscriptionType);
+      // Вызываем метод покупки подписки с указанием типа
+      await ref
+          .read(subscriptionStatusProvider.notifier)
+          .purchaseSubscription(subscriptionType);
 
-    setState(() {
-      _isPurchasing = false;
-    });
-
-    // Переход на главный экран
-    if (mounted) {
-      context.go('/home');
+      // Переход на главный экран
+      if (mounted) {
+        context.go('/home');
+      }
+    } catch (e) {
+      // В случае ошибки показываем сообщение и сбрасываем флаг
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при оформлении подписки: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // Всегда сбрасываем флаг покупки
+      if (mounted) {
+        setState(() {
+          _isPurchasing = false;
+        });
+      }
     }
   }
 
@@ -175,7 +195,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _handlePurchase,
+                onPressed: _isPurchasing ? null : _handlePurchase,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
                   foregroundColor: Colors.white,
@@ -254,11 +274,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     final isSelected = _selectedPlan == plan;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedPlan = plan;
-        });
-      },
+      onTap: _isPurchasing
+          ? null
+          : () {
+              setState(() {
+                _selectedPlan = plan;
+              });
+            },
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(

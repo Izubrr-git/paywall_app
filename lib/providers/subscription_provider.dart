@@ -1,30 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/storage_service.dart';
-
-// ============================================================================
-// Subscription Provider - Управление состоянием подписки
-// ============================================================================
-//
-// Использование в виджетах:
-//
-// 1. Чтение состояния подписки:
-//    ```dart
-//    final isSubscribed = ref.watch(subscriptionStatusProvider);
-//    ```
-//
-// 2. Покупка подписки:
-//    ```dart
-//    await ref.read(subscriptionStatusProvider.notifier).purchaseSubscription();
-//    ```
-//
-// 3. Отмена подписки:
-//    ```dart
-//    await ref.read(subscriptionStatusProvider.notifier).cancelSubscription();
-//    ```
-//
-// Состояние автоматически сохраняется в SharedPreferences и загружается при старте.
-// ============================================================================
 
 /// Провайдер для SharedPreferences
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {

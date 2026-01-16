@@ -31,8 +31,15 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     // Эмуляция процесса покупки (задержка 2 секунды)
     await Future.delayed(const Duration(seconds: 2));
 
-    // Вызываем метод покупки подписки
-    await ref.read(subscriptionStatusProvider.notifier).purchaseSubscription();
+    // Определяем тип подписки в зависимости от выбранного плана
+    final subscriptionType = _selectedPlan == SubscriptionPlan.monthly
+        ? SubscriptionType.monthly
+        : SubscriptionType.yearly;
+
+    // Вызываем метод покупки подписки с указанием типа
+    await ref
+        .read(subscriptionStatusProvider.notifier)
+        .purchaseSubscription(subscriptionType);
 
     setState(() {
       _isPurchasing = false;

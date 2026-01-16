@@ -5,9 +5,18 @@ import '../../providers/subscription_provider.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  String _formatDate(DateTime date) {
+    final months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasSubscription = ref.watch(subscriptionStatusProvider);
+    final expiryDate = ref.read(subscriptionStatusProvider.notifier).expiryDate;
 
     return Scaffold(
       appBar: AppBar(
@@ -85,6 +94,16 @@ class HomeScreen extends ConsumerWidget {
                       color: Colors.white.withOpacity(0.9),
                     ),
                   ),
+                  if (hasSubscription && expiryDate != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Активна до: ${_formatDate(expiryDate)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(
